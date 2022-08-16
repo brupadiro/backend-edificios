@@ -33,6 +33,12 @@
     },
     "phone": {
       "type": "integer"
+    },
+    "entry_hour": {
+      "type": "string"
+    },
+    "exit_hour": {
+      "type": "string"
     }
   }
 }
