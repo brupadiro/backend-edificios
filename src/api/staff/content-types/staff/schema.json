@@ -1,0 +1,38 @@
+{
+  "kind": "collectionType",
+  "collectionName": "staffs",
+  "info": {
+    "singularName": "staff",
+    "pluralName": "staffs",
+    "displayName": "staff",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string"
+    },
+    "doc": {
+      "type": "integer"
+    },
+    "area": {
+      "type": "enumeration",
+      "enum": [
+        "Mantenimiento",
+        "Limpieza",
+        "Administracion"
+      ]
+    },
+    "building": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::building.building"
+    },
+    "phone": {
+      "type": "integer"
+    }
+  }
+}

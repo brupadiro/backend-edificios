@@ -1,0 +1,21 @@
+{
+  "kind": "collectionType",
+  "collectionName": "form",
+  "info": {
+    "singularName": "forms",
+    "pluralName": "form",
+    "displayName": "forms"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "fields": {
+      "type": "dynamiczone",
+      "components": [
+        "forms.text-fields"
+      ]
+    }
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "kind": "collectionType",
+  "collectionName": "rentals",
+  "info": {
+    "singularName": "rental",
+    "pluralName": "rentals",
+    "displayName": "rentals",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "start_date": {
+      "type": "date"
+    },
+    "end_date": {
+      "type": "date"
+    },
+    "habitants": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::habitant.habitant"
+    },
+    "apartment": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::apartament.apartament"
+    },
+    "price": {
+      "type": "decimal"
+    },
+    "currency": {
+      "type": "enumeration",
+      "enum": [
+        "USD",
+        "UYU"
+      ]
+    }
+  }
+}

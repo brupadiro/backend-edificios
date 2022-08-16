@@ -1,0 +1,25 @@
+{
+  "kind": "collectionType",
+  "collectionName": "expenses_payments",
+  "info": {
+    "singularName": "expenses-payment",
+    "pluralName": "expenses-payments",
+    "displayName": "Expenses payment"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "payment": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::payment.payment"
+    },
+    "apartament": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::apartament.apartament"
+    }
+  }
+}

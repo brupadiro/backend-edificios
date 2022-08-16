@@ -1,0 +1,73 @@
+{
+  "kind": "collectionType",
+  "collectionName": "apartaments",
+  "info": {
+    "singularName": "apartament",
+    "pluralName": "apartaments",
+    "displayName": "apartaments",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "number": {
+      "type": "integer"
+    },
+    "rooms": {
+      "type": "integer"
+    },
+    "bathrooms": {
+      "type": "integer"
+    },
+    "square_meters": {
+      "type": "integer"
+    },
+    "expenses_cost": {
+      "type": "integer"
+    },
+    "amenities": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::amenity.amenity"
+    },
+    "expenses_payment_method": {
+      "type": "enumeration",
+      "enum": [
+        "Card",
+        "Cash"
+      ]
+    },
+    "in_rent": {
+      "type": "boolean"
+    },
+    "expenses_currency": {
+      "type": "enumeration",
+      "enum": [
+        "UYU",
+        "USD"
+      ]
+    },
+    "images": {
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ],
+      "type": "media",
+      "multiple": true
+    },
+    "files": {
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ],
+      "type": "media",
+      "multiple": true
+    }
+  }
+}

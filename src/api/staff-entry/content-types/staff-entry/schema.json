@@ -1,0 +1,31 @@
+{
+  "kind": "collectionType",
+  "collectionName": "staff_entries",
+  "info": {
+    "singularName": "staff-entry",
+    "pluralName": "staff-entries",
+    "displayName": "staff entries",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "staff": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::staff.staff"
+    },
+    "hour": {
+      "type": "time"
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "IN",
+        "OUT"
+      ]
+    }
+  }
+}

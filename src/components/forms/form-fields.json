@@ -1,0 +1,16 @@
+{
+  "collectionName": "components_forms_form_fields",
+  "info": {
+    "displayName": "Form fields",
+    "icon": "align-right"
+  },
+  "options": {},
+  "attributes": {
+    "value": {
+      "type": "text"
+    },
+    "type": {
+      "type": "string"
+    }
+  }
+}

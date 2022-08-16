@@ -1,0 +1,45 @@
+{
+  "kind": "collectionType",
+  "collectionName": "visits",
+  "info": {
+    "singularName": "visit",
+    "pluralName": "visits",
+    "displayName": "visits",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string"
+    },
+    "doc": {
+      "type": "string"
+    },
+    "apartment": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::apartament.apartament"
+    },
+    "doc_type": {
+      "type": "enumeration",
+      "enum": [
+        "CI",
+        "PASAPORTE"
+      ]
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "IN",
+        "OUT"
+      ],
+      "default": "IN"
+    },
+    "phone": {
+      "type": "integer"
+    }
+  }
+}

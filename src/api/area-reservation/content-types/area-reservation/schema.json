@@ -1,0 +1,39 @@
+{
+  "kind": "collectionType",
+  "collectionName": "area_reservations",
+  "info": {
+    "singularName": "area-reservation",
+    "pluralName": "area-reservations",
+    "displayName": "area reservations",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "zone": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::zone.zone"
+    },
+    "date": {
+      "type": "date"
+    },
+    "from": {
+      "type": "time"
+    },
+    "to": {
+      "type": "time"
+    },
+    "apartment": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::apartament.apartament"
+    },
+    "persons": {
+      "type": "integer",
+      "default": 1
+    }
+  }
+}
