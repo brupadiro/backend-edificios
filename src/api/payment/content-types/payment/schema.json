@@ -48,6 +48,12 @@
     },
     "comments": {
       "type": "text"
+    },
+    "apartament": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::apartament.apartament",
+      "inversedBy": "invoices"
     }
   }
 }

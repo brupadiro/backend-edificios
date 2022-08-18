@@ -30,16 +30,11 @@
         "PASAPORTE"
       ]
     },
-    "type": {
-      "type": "enumeration",
-      "enum": [
-        "IN",
-        "OUT"
-      ],
-      "default": "IN"
-    },
     "phone": {
       "type": "integer"
+    },
+    "out_hour": {
+      "type": "time"
     }
   }
 }
