@@ -1,0 +1,26 @@
+{
+  "kind": "collectionType",
+  "collectionName": "tasks",
+  "info": {
+    "singularName": "task",
+    "pluralName": "tasks",
+    "displayName": "tasks"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "date": {
+      "type": "date"
+    },
+    "description": {
+      "type": "string"
+    },
+    "staff": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::staff.staff"
+    }
+  }
+}
