@@ -15,12 +15,12 @@ jobs:
         port: 22
     - name: remote push
       run: |
-          cd /root/edificios/backend
+          cd ~/edificios/backend
           git pull origin master
         
     - name: build docker-compose 
       run: |
-            cd /root/edificios
+            cd ~/edificios
             docker-compose build backend
     - name: restart docker-compose
       run: |
