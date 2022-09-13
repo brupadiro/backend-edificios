@@ -1,0 +1,41 @@
+{
+  "kind": "collectionType",
+  "collectionName": "checking_accounts",
+  "info": {
+    "singularName": "checking-account",
+    "pluralName": "checking-accounts",
+    "displayName": "checking account",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "apartament": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::apartament.apartament"
+    },
+    "currency": {
+      "type": "enumeration",
+      "enum": [
+        "USD",
+        "UYU"
+      ]
+    },
+    "amount": {
+      "type": "decimal"
+    },
+    "concept": {
+      "type": "string"
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "deposit",
+        "withdrawal"
+      ]
+    }
+  }
+}

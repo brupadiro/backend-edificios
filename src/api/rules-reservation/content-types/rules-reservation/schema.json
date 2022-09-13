@@ -1,0 +1,38 @@
+{
+  "kind": "collectionType",
+  "collectionName": "rules_reservations",
+  "info": {
+    "singularName": "rules-reservation",
+    "pluralName": "rules-reservations",
+    "displayName": "rules reservation",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "period",
+        "before_to",
+        "prepayment"
+      ]
+    },
+    "subtype": {
+      "type": "enumeration",
+      "enum": [
+        "hour",
+        "turn",
+        "days"
+      ]
+    }
+  }
+}

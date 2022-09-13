@@ -23,6 +23,11 @@
     "capacity": {
       "type": "integer",
       "default": 1
+    },
+    "rules": {
+      "type": "component",
+      "repeatable": true,
+      "component": "zones.rules"
     }
   }
 }

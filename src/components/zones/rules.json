@@ -1,0 +1,19 @@
+{
+  "collectionName": "components_zones_rules",
+  "info": {
+    "displayName": "rules",
+    "icon": "address-card",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "rule": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::rules-reservation.rules-reservation"
+    },
+    "value": {
+      "type": "string"
+    }
+  }
+}
