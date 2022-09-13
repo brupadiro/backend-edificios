@@ -13,13 +13,13 @@ jobs:
         username: root
         password: 983F07553f
         port: 22
+    - name: Open Web Client Directory
+      working-directory: var/www/edificios
+      run: ls -a
     - name: remote push
       run: |
           cd /var/www/edificios/backend
           git pull origin master
-    - name: Open Web Client Directory
-      working-directory: var/www/edificios
-      run: ls -a
     - name: build docker-compose 
       run: |
             sudo cd /var/www/edificios/edificios
