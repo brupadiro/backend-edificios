@@ -13,4 +13,16 @@ jobs:
         username: root
         password: ${{ secrets.ROOT_PASSWORD }}
         port: 22
-        script: whoami
+    - name: remote push
+      run: |
+          cd /root/edificios/backend
+          git pull remote origin master
+        
+    - name: build docker-compose 
+      run: |
+            cd /root/edificios
+            docker-compose build backend
+    - name: restart docker-compose
+      run: |
+            cd /root/edificios
+            docker-compose up -d backend
