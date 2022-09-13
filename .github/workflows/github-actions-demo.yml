@@ -16,7 +16,7 @@ jobs:
     - name: remote push
       run: |
           cd /root/edificios/backend
-          git pull remote origin master
+          git pull origin master
         
     - name: build docker-compose 
       run: |
