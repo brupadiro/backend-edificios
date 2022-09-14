@@ -14,22 +14,7 @@ jobs:
         password: 983F07553f
         port: 22
         script: |
-          mkdir abc
-          ls -al
-
-    - name: Open Web Client Directory
-      run: mkdir "hola"
-    - name: Open Web Client Directoryy
-      run: ls
-    - name: remote push
-      run: |
-          cd /var/www/edificios/backend
+          cd /root/edificios/backend
           git pull origin master
-    - name: build docker-compose 
-      run: |
-            sudo cd /var/www/edificios/edificios
-            docker-compose build backend
-    - name: restart docker-compose
-      run: |
-            sudo cd /var/www/edificios/edificios
-            docker-compose up -d backend
+          docker-compose build backend
+          docker-compose up -d backend
