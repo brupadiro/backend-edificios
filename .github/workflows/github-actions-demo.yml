@@ -14,7 +14,7 @@ jobs:
         password: 983F07553f
         port: 22
     - name: Open Web Client Directory
-      run: ls -a
+      run: mkdir "hola"
     - name: remote push
       run: |
           cd /var/www/edificios/backend
