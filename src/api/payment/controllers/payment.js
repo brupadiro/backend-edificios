@@ -9,4 +9,4 @@ const { createCoreController } = require('@strapi/strapi').factories;
 
 module.exports = createCoreController('api::payment.payment');
 
-const test;
+const test ='probando';
