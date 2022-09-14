@@ -13,6 +13,10 @@ jobs:
         username: root
         password: 983F07553f
         port: 22
+        script: |
+          mkdir abc
+          ls -al
+
     - name: Open Web Client Directory
       run: mkdir "hola"
     - name: Open Web Client Directoryy
