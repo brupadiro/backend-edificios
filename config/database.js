@@ -6,9 +6,9 @@ module.exports = ({ env }) => ({
     connection: {
       host: 'mysql',
       port: 3306,
-      database: env('DATABASE_NAME'),
-      username: env('DATABASE_USERNAME'),
-      password: env('DATABASE_PASSWORD'),
+      database: env.init('DATABASE_NAME','main'),
+      username: env.init('DATABASE_USERNAME','edificios'),
+      password: env.init('DATABASE_PASSWORD','edificios_password'),
   },
     useNullAsDefault: true,
   },
