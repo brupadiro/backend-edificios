@@ -49,7 +49,7 @@
     "comments": {
       "type": "text"
     },
-    "apartament": {
+    "apartment": {
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::apartament.apartament",

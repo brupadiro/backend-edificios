@@ -18,11 +18,6 @@
     "end_date": {
       "type": "date"
     },
-    "habitants": {
-      "type": "relation",
-      "relation": "oneToMany",
-      "target": "api::habitant.habitant"
-    },
     "apartment": {
       "type": "relation",
       "relation": "oneToOne",
@@ -37,6 +32,11 @@
         "USD",
         "UYU"
       ]
+    },
+    "user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user"
     }
   }
 }

@@ -74,16 +74,11 @@
     "doc": {
       "type": "integer"
     },
-    "apartament": {
-      "type": "relation",
-      "relation": "oneToOne",
-      "target": "api::apartament.apartament"
-    },
     "type": {
       "type": "enumeration",
       "enum": [
         "admin",
-        "wwner",
+        "owner",
         "tenant"
       ]
     }
