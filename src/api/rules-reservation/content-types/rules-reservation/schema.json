@@ -34,6 +34,11 @@
         "turn",
         "days"
       ]
+    },
+    "building": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::building.building"
     }
   }
 }

@@ -2,31 +2,13 @@ const utils = require('@strapi/utils');
 const {
   sanitize
 } = utils;
-const sanitizeOutput = (user, ctx) => {
-  const schema = strapi.getModel('plugin::users-permissions.user');
-  const {
-    auth
-  } = ctx.state;
-
-  return sanitize.contentAPI.output(user, schema, {
-    auth
-  });
-};
 
 module.exports = (plugin) => {
   const me = plugin.controllers.user.me;
-
-  plugin.controllers.user.me = async (ctx) => {
-    var user = ctx.state.user;
-    if (!user) {
-      return ctx.unauthorized();
-    }
-
-    if (user.type == 'owner' || user.type == 'tenant') {
+  const extraDataByType = async function (user) {
       var extraData = {}
       if (user.type == 'owner') {
-
-        extraData = await strapi.db.query('api::owner.owner').findOne({
+        data = await strapi.db.query('api::owner.owner').findOne({
           where: {
             user: user.id
           },
@@ -36,7 +18,7 @@ module.exports = (plugin) => {
         });
       } else {
 
-        extraData = await strapi.db.query('api::rental.rental').findOne({
+        data = await strapi.db.query('api::rental.rental').findOne({
           where: {
             user: user.id
           },
@@ -45,12 +27,28 @@ module.exports = (plugin) => {
           },
         });
       }
-      console.log(extraData)
-      user.data = extraData;
-    }
-    ctx.body = await sanitizeOutput(user, ctx);
+      return data;
 
-    await me(ctx);
+  }
+  plugin.controllers.user.me = async (ctx) => {
+    var user = ctx.state.user;
+    if (!user) {
+      return ctx.unauthorized();
+    }
+
+    if (user.type == 'owner' || user.type == 'tenant') {
+      user.data = await extraDataByType(user);
+    }
+
+    user = await strapi.entityService.findOne(
+      'plugin::users-permissions.user',
+      ctx.state.user.id, {
+        populate: ['building'],
+        fields: ['name', 'phone', 'type', 'blocked', 'username'],
+      }
+    );
+    ctx.body = user
+
   };
 
   return plugin;

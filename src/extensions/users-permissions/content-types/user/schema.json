@@ -71,7 +71,7 @@
     "name": {
       "type": "string"
     },
-    "doc": {
+    "phone": {
       "type": "integer"
     },
     "type": {

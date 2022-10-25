@@ -4,7 +4,8 @@
   "info": {
     "singularName": "area",
     "pluralName": "areas",
-    "displayName": "areas"
+    "displayName": "areas",
+    "description": ""
   },
   "options": {
     "draftAndPublish": true
@@ -13,6 +14,11 @@
   "attributes": {
     "name": {
       "type": "string"
+    },
+    "building": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::building.building"
     }
   }
 }
