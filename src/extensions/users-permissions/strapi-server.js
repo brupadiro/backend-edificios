@@ -36,9 +36,6 @@ module.exports = (plugin) => {
       return ctx.unauthorized();
     }
 
-    if (user.type == 'owner' || user.type == 'tenant') {
-      user.data = await extraDataByType(user);
-    }
 
     user = await strapi.entityService.findOne(
       'plugin::users-permissions.user',
@@ -47,6 +44,12 @@ module.exports = (plugin) => {
         fields: ['name', 'phone', 'type', 'blocked', 'username'],
       }
     );
+
+    if (user.type == 'owner' || user.type == 'tenant') {
+      user.data = await extraDataByType(user);
+    }
+
+
     ctx.body = user
 
   };
