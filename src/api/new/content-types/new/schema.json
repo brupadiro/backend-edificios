@@ -1,10 +1,10 @@
 {
   "kind": "collectionType",
-  "collectionName": "areas",
+  "collectionName": "news",
   "info": {
-    "singularName": "area",
-    "pluralName": "areas",
-    "displayName": "areas",
+    "singularName": "new",
+    "pluralName": "news",
+    "displayName": "news",
     "description": ""
   },
   "options": {
@@ -12,8 +12,11 @@
   },
   "pluginOptions": {},
   "attributes": {
-    "name": {
+    "title": {
       "type": "string"
+    },
+    "content": {
+      "type": "text"
     },
     "building": {
       "type": "relation",

@@ -12,16 +12,19 @@
   },
   "pluginOptions": {},
   "attributes": {
-    "name": {
-      "type": "string"
-    },
-    "doc": {
-      "type": "uid"
-    },
     "apartment": {
       "type": "relation",
       "relation": "oneToOne",
       "target": "api::apartament.apartament"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "in_property": {
+      "type": "boolean",
+      "default": false
     }
   }
 }

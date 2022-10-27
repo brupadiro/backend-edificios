@@ -23,7 +23,8 @@
       "enum": [
         "period",
         "before_to",
-        "prepayment"
+        "prepayment",
+        "only_owners"
       ]
     },
     "subtype": {
@@ -33,6 +34,11 @@
         "turn",
         "days"
       ]
+    },
+    "building": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::building.building"
     }
   }
 }
