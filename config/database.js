@@ -2,13 +2,13 @@ const path = require('path');
 
 module.exports = ({ env }) => ({
   connection: {
-    client: 'mysql',
+    client: 'postgres',
     connection: {
-      host: 'mysql',
-      port: 3306,
-      database: env('DATABASE_NAME'),
-      user: env('DATABASE_USERNAME'),
-      password: env('DATABASE_PASSWORD'),
+      host: '128.199.36.43',
+      port: 5432,
+      database: env('POSTGRES_DB'),
+      user: env('POSTGRES_USER'),
+      password: env('POSTGRES_PASSWORD'),
   },
     useNullAsDefault: true,
   },
