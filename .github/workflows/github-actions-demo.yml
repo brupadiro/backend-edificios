@@ -9,12 +9,12 @@ jobs:
     - name: executing remote ssh commands using password
       uses: appleboy/ssh-action@master
       with:
-        host: 68.183.113.95
+        host: 128.199.36.43
         username: root
         password: 983F07553f
         port: 22
         script: |
-          cd /root/edificios/backend
+          cd /root/gestus/backend
           git stash
           git stash drop
           git pull -v origin master
