@@ -4,7 +4,8 @@
   "info": {
     "singularName": "task",
     "pluralName": "tasks",
-    "displayName": "tasks"
+    "displayName": "tasks",
+    "description": ""
   },
   "options": {
     "draftAndPublish": true
@@ -21,6 +22,24 @@
       "type": "relation",
       "relation": "oneToOne",
       "target": "api::staff.staff"
+    },
+    "priority": {
+      "type": "enumeration",
+      "enum": [
+        "Low",
+        "Medium",
+        "High"
+      ]
+    },
+    "apartment": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::apartament.apartament"
+    },
+    "area": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::area.area"
     }
   }
 }

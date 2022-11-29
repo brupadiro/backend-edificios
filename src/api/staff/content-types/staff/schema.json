@@ -12,12 +12,6 @@
   },
   "pluginOptions": {},
   "attributes": {
-    "name": {
-      "type": "string"
-    },
-    "doc": {
-      "type": "integer"
-    },
     "area": {
       "type": "enumeration",
       "enum": [
@@ -31,14 +25,26 @@
       "relation": "oneToOne",
       "target": "api::building.building"
     },
-    "phone": {
-      "type": "integer"
-    },
     "entry_hour": {
       "type": "string"
     },
     "exit_hour": {
       "type": "string"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "photo": {
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ],
+      "type": "media",
+      "multiple": false
     }
   }
 }

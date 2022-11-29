@@ -35,6 +35,12 @@
     },
     "out_hour": {
       "type": "time"
+    },
+    "in_hour": {
+      "type": "time"
+    },
+    "in_date": {
+      "type": "date"
     }
   }
 }
