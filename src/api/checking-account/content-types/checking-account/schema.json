@@ -15,7 +15,8 @@
     "apartment": {
       "type": "relation",
       "relation": "oneToOne",
-      "target": "api::apartament.apartament"
+      "target": "api::apartament.apartament",
+      "useJoinTable": false
     },
     "currency": {
       "type": "enumeration",

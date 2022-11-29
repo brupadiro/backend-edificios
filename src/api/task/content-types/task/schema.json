@@ -40,6 +40,14 @@
       "type": "relation",
       "relation": "oneToOne",
       "target": "api::area.area"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Open",
+        "Closed"
+      ],
+      "default": "Open"
     }
   }
 }
