@@ -9,7 +9,7 @@ module.exports = ({
         secret: 'NTTzxMIKs+QdjXGjsPuG1279eU/DoWGN/evyeQJ61rE',
         endpoint: 'nyc3.digitaloceanspaces.com',
         space: "tatudev",
-        directory: "gestus",
+        directory: env('FILE_DIRECTORY'),
       },
     },
   },
