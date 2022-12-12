@@ -82,6 +82,13 @@
         "tenant",
         "staff"
       ]
+    },
+    "doc_type": {
+      "type": "enumeration",
+      "enum": [
+        "CI",
+        "PASAPORTE"
+      ]
     }
   }
 }

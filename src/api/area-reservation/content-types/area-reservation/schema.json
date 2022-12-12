@@ -35,9 +35,12 @@
       "type": "integer",
       "default": 1
     },
-    "pending_payment": {
+    "confirmed": {
       "type": "boolean",
       "default": false
+    },
+    "notes": {
+      "type": "text"
     }
   }
 }

@@ -12,14 +12,6 @@
   },
   "pluginOptions": {},
   "attributes": {
-    "area": {
-      "type": "enumeration",
-      "enum": [
-        "Mantenimiento",
-        "Limpieza",
-        "Administracion"
-      ]
-    },
     "building": {
       "type": "relation",
       "relation": "oneToOne",
@@ -37,14 +29,20 @@
       "target": "plugin::users-permissions.user"
     },
     "photo": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
       "allowedTypes": [
         "images",
         "files",
         "videos",
         "audios"
-      ],
-      "type": "media",
-      "multiple": false
+      ]
+    },
+    "area": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::area.area"
     }
   }
 }

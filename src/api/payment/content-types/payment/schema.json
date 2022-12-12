@@ -17,7 +17,9 @@
       "enum": [
         "expenses",
         "rental",
-        "suppliers"
+        "suppliers",
+        "debts",
+        "others"
       ]
     },
     "status": {
