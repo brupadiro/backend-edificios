@@ -1,0 +1,395 @@
+From e1588ff198290bd631a9afc90cf1acfe2f72b70f Mon Sep 17 00:00:00 2001
+From: tuxuuman <tuxuuman@gmail.com>
+Date: Wed, 2 Mar 2022 13:01:31 +0000
+Subject: [PATCH] simple implementation of transactions
+
+---
+ packages/core/database/lib/entity-manager.js  | 51 +++++++++++--------
+ packages/core/database/lib/index.d.ts         |  1 +
+ packages/core/database/lib/index.js           | 12 ++++-
+ .../database/lib/query/helpers/populate.js    | 26 +++++-----
+ .../core/database/lib/query/query-builder.js  | 15 ++++--
+ 5 files changed, 62 insertions(+), 43 deletions(-)
+
+diff --git a/packages/core/database/lib/entity-manager.js b/packages/core/database/lib/entity-manager.js
+index c614e5a4e7d..5b72d6522ad 100644
+--- a/packages/core/database/lib/entity-manager.js
++++ b/packages/core/database/lib/entity-manager.js
+@@ -108,38 +108,43 @@ const processData = (metadata, data = {}, { withDefaults = false } = {}) => {
+   return obj;
+ };
+ 
+-const createEntityManager = db => {
++const createEntityManager = (db, trx) => {
+   const repoMap = {};
+ 
+-  return {
++  const rundblifecycle = async (type, uid, data) => {
++    data.em = em;
++    await db.lifecycles.run(type, uid, data);
++  };
++
++  const em = {
+     async findOne(uid, params) {
+-      await db.lifecycles.run('beforeFindOne', uid, { params });
++      await rundblifecycle('beforeFindOne', uid, { params });
+ 
+       const result = await this.createQueryBuilder(uid)
+         .init(params)
+         .first()
+         .execute();
+ 
+-      await db.lifecycles.run('afterFindOne', uid, { params, result });
++      await rundblifecycle('afterFindOne', uid, { params, result });
+ 
+       return result;
+     },
+ 
+     // should we name it findOne because people are used to it ?
+     async findMany(uid, params) {
+-      await db.lifecycles.run('beforeFindMany', uid, { params });
++      await rundblifecycle('beforeFindMany', uid, { params });
+ 
+       const result = await this.createQueryBuilder(uid)
+         .init(params)
+         .execute();
+ 
+-      await db.lifecycles.run('afterFindMany', uid, { params, result });
++      await rundblifecycle('afterFindMany', uid, { params, result });
+ 
+       return result;
+     },
+ 
+     async count(uid, params = {}) {
+-      await db.lifecycles.run('beforeCount', uid, { params });
++      await rundblifecycle('beforeCount', uid, { params });
+ 
+       const res = await this.createQueryBuilder(uid)
+         .init(_.pick(['_q', 'where', 'filters'], params))
+@@ -149,13 +154,13 @@ const createEntityManager = db => {
+ 
+       const result = Number(res.count);
+ 
+-      await db.lifecycles.run('afterCount', uid, { params, result });
++      await rundblifecycle('afterCount', uid, { params, result });
+ 
+       return result;
+     },
+ 
+     async create(uid, params = {}) {
+-      await db.lifecycles.run('beforeCreate', uid, { params });
++      await rundblifecycle('beforeCreate', uid, { params });
+ 
+       const metadata = db.metadata.get(uid);
+       const { data } = params;
+@@ -180,14 +185,14 @@ const createEntityManager = db => {
+         populate: params.populate,
+       });
+ 
+-      await db.lifecycles.run('afterCreate', uid, { params, result });
++      await rundblifecycle('afterCreate', uid, { params, result });
+ 
+       return result;
+     },
+ 
+     // TODO: where do we handle relation processing for many queries ?
+     async createMany(uid, params = {}) {
+-      await db.lifecycles.run('beforeCreateMany', uid, { params });
++      await rundblifecycle('beforeCreateMany', uid, { params });
+ 
+       const metadata = db.metadata.get(uid);
+       const { data } = params;
+@@ -208,13 +213,13 @@ const createEntityManager = db => {
+ 
+       const result = { count: data.length };
+ 
+-      await db.lifecycles.run('afterCreateMany', uid, { params, result });
++      await rundblifecycle('afterCreateMany', uid, { params, result });
+ 
+       return result;
+     },
+ 
+     async update(uid, params = {}) {
+-      await db.lifecycles.run('beforeUpdate', uid, { params });
++      await rundblifecycle('beforeUpdate', uid, { params });
+ 
+       const metadata = db.metadata.get(uid);
+       const { where, data } = params;
+@@ -257,14 +262,14 @@ const createEntityManager = db => {
+         populate: params.populate,
+       });
+ 
+-      await db.lifecycles.run('afterUpdate', uid, { params, result });
++      await rundblifecycle('afterUpdate', uid, { params, result });
+ 
+       return result;
+     },
+ 
+     // TODO: where do we handle relation processing for many queries ?
+     async updateMany(uid, params = {}) {
+-      await db.lifecycles.run('beforeUpdateMany', uid, { params });
++      await rundblifecycle('beforeUpdateMany', uid, { params });
+ 
+       const metadata = db.metadata.get(uid);
+       const { where, data } = params;
+@@ -282,13 +287,13 @@ const createEntityManager = db => {
+ 
+       const result = { count: updatedRows };
+ 
+-      await db.lifecycles.run('afterUpdateMany', uid, { params, result });
++      await rundblifecycle('afterUpdateMany', uid, { params, result });
+ 
+       return result;
+     },
+ 
+     async delete(uid, params = {}) {
+-      await db.lifecycles.run('beforeDelete', uid, { params });
++      await rundblifecycle('beforeDelete', uid, { params });
+ 
+       const { where, select, populate } = params;
+ 
+@@ -316,14 +321,14 @@ const createEntityManager = db => {
+ 
+       await this.deleteRelations(uid, id);
+ 
+-      await db.lifecycles.run('afterDelete', uid, { params, result: entity });
++      await rundblifecycle('afterDelete', uid, { params, result: entity });
+ 
+       return entity;
+     },
+ 
+     // TODO: where do we handle relation processing for many queries ?
+     async deleteMany(uid, params = {}) {
+-      await db.lifecycles.run('beforeDeleteMany', uid, { params });
++      await rundblifecycle('beforeDeleteMany', uid, { params });
+ 
+       const { where } = params;
+ 
+@@ -334,7 +339,7 @@ const createEntityManager = db => {
+ 
+       const result = { count: deletedRows };
+ 
+-      await db.lifecycles.run('afterDelete', uid, { params, result });
++      await rundblifecycle('afterDelete', uid, { params, result });
+ 
+       return result;
+     },
+@@ -863,12 +868,12 @@ const createEntityManager = db => {
+     // -> private
+ 
+     createQueryBuilder(uid) {
+-      return createQueryBuilder(uid, db);
++      return createQueryBuilder(uid, db, trx);
+     },
+ 
+     getRepository(uid) {
+       if (!repoMap[uid]) {
+-        repoMap[uid] = createRepository(uid, db);
++        repoMap[uid] = createRepository(uid, { entityManager: em });
+       }
+ 
+       return repoMap[uid];
+@@ -878,6 +883,8 @@ const createEntityManager = db => {
+       repoMap.clear();
+     },
+   };
++
++  return em;
+ };
+ 
+ module.exports = {
+diff --git a/packages/core/database/lib/index.d.ts b/packages/core/database/lib/index.d.ts
+index 44fa79f6f74..ba605e1d1f1 100644
+--- a/packages/core/database/lib/index.d.ts
++++ b/packages/core/database/lib/index.d.ts
+@@ -139,6 +139,7 @@ export interface Database {
+   entityManager: EntityManager;
+ 
+   query<T extends keyof AllTypes>(uid: T): QueryFromContentType<T>;
++  transaction(cb: (em: EntityManager) => Promise<any>): Promise<void>;
+ }
+ export class Database implements Database {
+   static transformContentTypes(contentTypes: any[]): ModelConfig[];
+diff --git a/packages/core/database/lib/index.js b/packages/core/database/lib/index.js
+index d75d9ad177c..7e7fcf1dce9 100644
+--- a/packages/core/database/lib/index.js
++++ b/packages/core/database/lib/index.js
+@@ -58,9 +58,17 @@ class Database {
+     return this.entityManager.getRepository(uid);
+   }
+ 
+-  getConnection(tableName) {
++  async transaction(cb) {
++    await this.connection.transaction(async trx => {
++      const em = createEntityManager(this, trx);
++      await cb(em);
++    });
++  }
++
++  getConnection(tableName, trx) {
+     const schema = this.connection.getSchemaName();
+-    const connection = tableName ? this.connection(tableName) : this.connection;
++    const connOrTrx = trx ? trx : this.connection;
++    const connection = tableName ? connOrTrx(tableName) : connOrTrx;
+     return schema ? connection.withSchema(schema) : connection;
+   }
+ 
+diff --git a/packages/core/database/lib/query/helpers/populate.js b/packages/core/database/lib/query/helpers/populate.js
+index e23706c4c15..e04cd6a19b1 100644
+--- a/packages/core/database/lib/query/helpers/populate.js
++++ b/packages/core/database/lib/query/helpers/populate.js
+@@ -112,8 +112,9 @@ const pickPopulateParams = _.pick([
+ // TODO: handle count for join columns
+ // TODO: cleanup count
+ const applyPopulate = async (results, populate, ctx) => {
+-  const { db, uid, qb } = ctx;
++  const { db, uid, qb, trx } = ctx;
+   const meta = db.metadata.get(uid);
++  const queryBuilder = uid => require('../query-builder')(uid, db, trx);
+ 
+   if (_.isEmpty(results)) {
+     return results;
+@@ -151,8 +152,7 @@ const applyPopulate = async (results, populate, ctx) => {
+           continue;
+         }
+ 
+-        const rows = await db.entityManager
+-          .createQueryBuilder(targetMeta.uid)
++        const rows = await queryBuilder(targetMeta.uid)
+           .init(populateValue)
+           .addSelect(`${qb.alias}.${referencedColumnName}`)
+           .where({ [referencedColumnName]: referencedValues })
+@@ -170,7 +170,7 @@ const applyPopulate = async (results, populate, ctx) => {
+       if (attribute.joinTable) {
+         const { joinTable } = attribute;
+ 
+-        const qb = db.entityManager.createQueryBuilder(targetMeta.uid);
++        const qb = queryBuilder(targetMeta.uid);
+ 
+         const {
+           name: joinColumnName,
+@@ -234,8 +234,7 @@ const applyPopulate = async (results, populate, ctx) => {
+           continue;
+         }
+ 
+-        const rows = await db.entityManager
+-          .createQueryBuilder(targetMeta.uid)
++        const rows = await queryBuilder(targetMeta.uid)
+           .init(populateValue)
+           .addSelect(`${qb.alias}.${referencedColumnName}`)
+           .where({ [referencedColumnName]: referencedValues })
+@@ -253,7 +252,7 @@ const applyPopulate = async (results, populate, ctx) => {
+       if (attribute.joinTable) {
+         const { joinTable } = attribute;
+ 
+-        const qb = db.entityManager.createQueryBuilder(targetMeta.uid);
++        const qb = queryBuilder(targetMeta.uid);
+ 
+         const {
+           name: joinColumnName,
+@@ -336,7 +335,7 @@ const applyPopulate = async (results, populate, ctx) => {
+     } else if (attribute.relation === 'manyToMany') {
+       const { joinTable } = attribute;
+ 
+-      const qb = db.entityManager.createQueryBuilder(targetMeta.uid);
++      const qb = queryBuilder(targetMeta.uid);
+ 
+       const { name: joinColumnName, referencedColumn: referencedColumnName } = joinTable.joinColumn;
+ 
+@@ -430,8 +429,7 @@ const applyPopulate = async (results, populate, ctx) => {
+           continue;
+         }
+ 
+-        const rows = await db.entityManager
+-          .createQueryBuilder(target)
++        const rows = await queryBuilder(target)
+           .init(populateValue)
+           // .addSelect(`${qb.alias}.${idColumn.referencedColumn}`)
+           .where({ [idColumn.name]: referencedValues, [typeColumn.name]: uid })
+@@ -467,7 +465,7 @@ const applyPopulate = async (results, populate, ctx) => {
+         }
+ 
+         // find with join table
+-        const qb = db.entityManager.createQueryBuilder(target);
++        const qb = queryBuilder(target);
+ 
+         const alias = qb.getAlias();
+ 
+@@ -518,7 +516,7 @@ const applyPopulate = async (results, populate, ctx) => {
+         results.map(r => r[joinColumn.referencedColumn]).filter(value => !_.isNil(value))
+       );
+ 
+-      const qb = db.entityManager.createQueryBuilder(joinTable.name);
++      const qb = queryBuilder(joinTable.name);
+ 
+       const joinRows = await qb
+         .where({
+@@ -557,7 +555,7 @@ const applyPopulate = async (results, populate, ctx) => {
+           continue;
+         }
+ 
+-        const qb = db.entityManager.createQueryBuilder(type);
++        const qb = queryBuilder(type);
+ 
+         const rows = await qb
+           .init(populateValue)
+@@ -621,7 +619,7 @@ const applyPopulate = async (results, populate, ctx) => {
+           continue;
+         }
+ 
+-        const qb = db.entityManager.createQueryBuilder(type);
++        const qb = queryBuilder(type);
+ 
+         const rows = await qb
+           .init(populateValue)
+diff --git a/packages/core/database/lib/query/query-builder.js b/packages/core/database/lib/query/query-builder.js
+index de39d962c77..8deabfd15ee 100644
+--- a/packages/core/database/lib/query/query-builder.js
++++ b/packages/core/database/lib/query/query-builder.js
+@@ -4,7 +4,7 @@ const _ = require('lodash/fp');
+ 
+ const helpers = require('./helpers');
+ 
+-const createQueryBuilder = (uid, db) => {
++const createQueryBuilder = (uid, db, trx) => {
+   const meta = db.metadata.get(uid);
+   const { tableName } = meta;
+ 
+@@ -206,12 +206,12 @@ const createQueryBuilder = (uid, db) => {
+       const subQB = this.getKnexQuery();
+ 
+       const nestedSubQuery = db
+-        .getConnection()
++        .getConnection(null, trx)
+         .select('id')
+         .from(subQB.as('subQuery'));
+ 
+       return db
+-        .getConnection(tableName)
++        .getConnection(tableName, trx)
+         [state.type]()
+         .whereIn('id', nestedSubQuery);
+     },
+@@ -262,7 +262,7 @@ const createQueryBuilder = (uid, db) => {
+ 
+       const aliasedTableName = this.mustUseAlias() ? `${tableName} as ${this.alias}` : tableName;
+ 
+-      const qb = db.getConnection(aliasedTableName);
++      const qb = db.getConnection(aliasedTableName, trx);
+ 
+       if (this.shouldUseSubQuery()) {
+         return this.runSubQuery();
+@@ -354,7 +354,12 @@ const createQueryBuilder = (uid, db) => {
+         const rows = await qb;
+ 
+         if (state.populate && !_.isNil(rows)) {
+-          await helpers.applyPopulate(_.castArray(rows), state.populate, { qb: this, uid, db });
++          await helpers.applyPopulate(_.castArray(rows), state.populate, {
++            qb: this,
++            uid,
++            db,
++            trx,
++          });
+         }
+ 
+         let results = rows;

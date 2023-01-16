@@ -1,0 +1,500 @@
+From 0d73def370459a00ac79432d70dd89b6c3e6858b Mon Sep 17 00:00:00 2001
+From: Alexandre Bodin <bodin.alex@gmail.com>
+Date: Mon, 12 Sep 2022 15:24:53 +0200
+Subject: [PATCH 1/3] Implicit transactioning
+
+---
+ packages/core/database/lib/index.d.ts         |   1 +
+ packages/core/database/lib/index.js           |  23 +++-
+ .../core/database/lib/query/query-builder.js  |  11 +-
+ .../core/database/lib/transaction-context.js  |  17 +++
+ .../lib/services/entity-service/index.js      | 128 ++++++++++--------
+ .../documentation/content-api.yaml            |   3 +-
+ 6 files changed, 117 insertions(+), 66 deletions(-)
+ create mode 100644 packages/core/database/lib/transaction-context.js
+
+diff --git a/packages/core/database/lib/index.d.ts b/packages/core/database/lib/index.d.ts
+index 726b910cd2b..01e1148a0aa 100644
+--- a/packages/core/database/lib/index.d.ts
++++ b/packages/core/database/lib/index.d.ts
+@@ -160,6 +160,7 @@ export interface Database {
+   entityManager: EntityManager;
+ 
+   query<T extends keyof AllTypes>(uid: T): QueryFromContentType<T>;
++  transaction(cb: (em: EntityManager) => Promise<any>): Promise<void>;
+ }
+ export class Database implements Database {
+   static transformContentTypes(contentTypes: any[]): ModelConfig[];
+diff --git a/packages/core/database/lib/index.js b/packages/core/database/lib/index.js
+index 3e003fcbf74..ff91a066232 100644
+--- a/packages/core/database/lib/index.js
++++ b/packages/core/database/lib/index.js
+@@ -8,6 +8,7 @@ const { createMigrationsProvider } = require('./migrations');
+ const { createLifecyclesProvider } = require('./lifecycles');
+ const createConnection = require('./connection');
+ const errors = require('./errors');
++const transactionCtx = require('./transaction-context');
+ 
+ // TODO: move back into strapi
+ const { transformContentTypes } = require('./utils/content-types');
+@@ -47,6 +48,24 @@ class Database {
+     return this.entityManager.getRepository(uid);
+   }
+ 
++  async transaction(cb) {
++    if (!cb) {
++      return this.connection.transaction();
++    }
++
++    const trx = await this.connection.transaction();
++    return transactionCtx.run(trx, async () => {
++      try {
++        const res = await cb();
++        await trx.commit();
++        return res;
++      } catch (error) {
++        await trx.rollback();
++        throw error;
++      }
++    });
++  }
++
+   getConnection(tableName) {
+     const schema = this.connection.getSchemaName();
+     const connection = tableName ? this.connection(tableName) : this.connection;
+@@ -58,10 +77,6 @@ class Database {
+     return schema ? trx.schema.withSchema(schema) : trx.schema;
+   }
+ 
+-  transaction() {
+-    return this.connection.transaction();
+-  }
+-
+   queryBuilder(uid) {
+     return this.entityManager.createQueryBuilder(uid);
+   }
+diff --git a/packages/core/database/lib/query/query-builder.js b/packages/core/database/lib/query/query-builder.js
+index b94e6da5066..2cedef1c0d1 100644
+--- a/packages/core/database/lib/query/query-builder.js
++++ b/packages/core/database/lib/query/query-builder.js
+@@ -3,6 +3,7 @@
+ const _ = require('lodash/fp');
+ 
+ const helpers = require('./helpers');
++const transactionCtx = require('../transaction-context');
+ 
+ const createQueryBuilder = (uid, db) => {
+   const meta = db.metadata.get(uid);
+@@ -393,10 +394,18 @@ const createQueryBuilder = (uid, db) => {
+       try {
+         const qb = this.getKnexQuery();
+ 
++        if (transactionCtx.get()) {
++          qb.transacting(transactionCtx.get());
++        }
++
+         const rows = await qb;
+ 
+         if (state.populate && !_.isNil(rows)) {
+-          await helpers.applyPopulate(_.castArray(rows), state.populate, { qb: this, uid, db });
++          await helpers.applyPopulate(_.castArray(rows), state.populate, {
++            qb: this,
++            uid,
++            db,
++          });
+         }
+ 
+         let results = rows;
+diff --git a/packages/core/database/lib/transaction-context.js b/packages/core/database/lib/transaction-context.js
+new file mode 100644
+index 00000000000..fb2473b4d6d
+--- /dev/null
++++ b/packages/core/database/lib/transaction-context.js
+@@ -0,0 +1,17 @@
++'use strict';
++
++const { AsyncLocalStorage } = require('async_hooks');
++
++const storage = new AsyncLocalStorage();
++
++const transactionCtx = {
++  async run(store, cb) {
++    return storage.run(store, cb);
++  },
++
++  get() {
++    return storage.getStore();
++  },
++};
++
++module.exports = transactionCtx;
+diff --git a/packages/core/strapi/lib/services/entity-service/index.js b/packages/core/strapi/lib/services/entity-service/index.js
+index 54277520c37..86916763487 100644
+--- a/packages/core/strapi/lib/services/entity-service/index.js
++++ b/packages/core/strapi/lib/services/entity-service/index.js
+@@ -129,22 +129,25 @@ const createDefaultImplementation = ({ strapi, db, eventHub, entityValidator })
+     // select / populate
+     const query = transformParamsToQuery(uid, pickSelectionParams(wrappedParams));
+ 
+-    // TODO: wrap into transaction
+-    const componentData = await createComponents(uid, validData);
+-
+-    let entity = await db.query(uid).create({
+-      ...query,
+-      data: creationPipeline(Object.assign(omitComponentData(model, validData), componentData), {
+-        contentType: model,
+-      }),
+-    });
++    const entity = await db.transaction(async () => {
++      const componentData = await createComponents(uid, validData);
++
++      let entity = await db.query(uid).create({
++        ...query,
++        data: creationPipeline(Object.assign(omitComponentData(model, validData), componentData), {
++          contentType: model,
++        }),
++      });
++
++      // TODO: upload the files then set the links in the entity like with compo to avoid making too many queries
++      // FIXME: upload in components
++      if (files && Object.keys(files).length > 0) {
++        await this.uploadFiles(uid, entity, files);
++        entity = await this.findOne(uid, entity.id, wrappedParams);
++      }
+ 
+-    // TODO: upload the files then set the links in the entity like with compo to avoid making too many queries
+-    // FIXME: upload in components
+-    if (files && Object.keys(files).length > 0) {
+-      await this.uploadFiles(uid, entity, files);
+-      entity = await this.findOne(uid, entity.id, wrappedParams);
+-    }
++      return entity;
++    });
+ 
+     await this.emitEvent(uid, ENTRY_CREATE, entity);
+ 
+@@ -157,43 +160,46 @@ const createDefaultImplementation = ({ strapi, db, eventHub, entityValidator })
+ 
+     const model = strapi.getModel(uid);
+ 
+-    const entityToUpdate = await db.query(uid).findOne({ where: { id: entityId } });
++    const entity = await db.transaction(async () => {
++      const entityToUpdate = await db.query(uid).findOne({ where: { id: entityId } });
+ 
+-    if (!entityToUpdate) {
+-      return null;
+-    }
+-
+-    const isDraft = contentTypesUtils.isDraft(entityToUpdate, model);
+-
+-    const validData = await entityValidator.validateEntityUpdate(
+-      model,
+-      data,
+-      {
+-        isDraft,
+-      },
+-      entityToUpdate
+-    );
+-
+-    const query = transformParamsToQuery(uid, pickSelectionParams(wrappedParams));
++      if (!entityToUpdate) {
++        return null;
++      }
+ 
+-    // TODO: wrap in transaction
+-    const componentData = await updateComponents(uid, entityToUpdate, validData);
++      const isDraft = contentTypesUtils.isDraft(entityToUpdate, model);
++
++      const validData = await entityValidator.validateEntityUpdate(
++        model,
++        data,
++        {
++          isDraft,
++        },
++        entityToUpdate
++      );
++
++      const query = transformParamsToQuery(uid, pickSelectionParams(wrappedParams));
++
++      const componentData = await updateComponents(uid, entityToUpdate, validData);
++
++      let entity = await db.query(uid).update({
++        ...query,
++        where: { id: entityId },
++        data: updatePipeline(Object.assign(omitComponentData(model, validData), componentData), {
++          contentType: model,
++        }),
++      });
++
++      // TODO: upload the files then set the links in the entity like with compo to avoid making too many queries
++      // FIXME: upload in components
++      if (files && Object.keys(files).length > 0) {
++        await this.uploadFiles(uid, entity, files);
++        entity = await this.findOne(uid, entity.id, wrappedParams);
++      }
+ 
+-    let entity = await db.query(uid).update({
+-      ...query,
+-      where: { id: entityId },
+-      data: updatePipeline(Object.assign(omitComponentData(model, validData), componentData), {
+-        contentType: model,
+-      }),
++      return entity;
+     });
+ 
+-    // TODO: upload the files then set the links in the entity like with compo to avoid making too many queries
+-    // FIXME: upload in components
+-    if (files && Object.keys(files).length > 0) {
+-      await this.uploadFiles(uid, entity, files);
+-      entity = await this.findOne(uid, entity.id, wrappedParams);
+-    }
+-
+     await this.emitEvent(uid, ENTRY_UPDATE, entity);
+ 
+     return entity;
+@@ -205,23 +211,27 @@ const createDefaultImplementation = ({ strapi, db, eventHub, entityValidator })
+     // select / populate
+     const query = transformParamsToQuery(uid, pickSelectionParams(wrappedParams));
+ 
+-    const entityToDelete = await db.query(uid).findOne({
+-      ...query,
+-      where: { id: entityId },
+-    });
++    const entity = await db.transaction(async () => {
++      const entityToDelete = await db.query(uid).findOne({
++        ...query,
++        where: { id: entityId },
++      });
+ 
+-    if (!entityToDelete) {
+-      return null;
+-    }
++      if (!entityToDelete) {
++        return null;
++      }
+ 
+-    const componentsToDelete = await getComponents(uid, entityToDelete);
++      const componentsToDelete = await getComponents(uid, entityToDelete);
+ 
+-    await db.query(uid).delete({ where: { id: entityToDelete.id } });
+-    await deleteComponents(uid, { ...entityToDelete, ...componentsToDelete });
++      await db.query(uid).delete({ where: { id: entityToDelete.id } });
++      await deleteComponents(uid, { ...entityToDelete, ...componentsToDelete });
+ 
+-    await this.emitEvent(uid, ENTRY_DELETE, entityToDelete);
++      return entityToDelete;
++    });
+ 
+-    return entityToDelete;
++    await this.emitEvent(uid, ENTRY_DELETE, entity);
++
++    return entity;
+   },
+ 
+   // FIXME: used only for the CM to be removed
+diff --git a/packages/plugins/users-permissions/documentation/content-api.yaml b/packages/plugins/users-permissions/documentation/content-api.yaml
+index e87520b4463..35b2bb9ae56 100644
+--- a/packages/plugins/users-permissions/documentation/content-api.yaml
++++ b/packages/plugins/users-permissions/documentation/content-api.yaml
+@@ -695,7 +695,7 @@ paths:
+             type: string
+           description: user Id
+       responses:
+-        "200":
++        '200':
+           description: Returns deleted user info
+           content:
+             application/json:
+@@ -868,4 +868,3 @@ components:
+                   controllerA:
+                     find:
+                       enabled: true
+-
+
+From 8db41746e995cc2ef2c2df00c8d786f2c38076b0 Mon Sep 17 00:00:00 2001
+From: Alexandre Bodin <bodin.alex@gmail.com>
+Date: Mon, 12 Sep 2022 16:16:46 +0200
+Subject: [PATCH 2/3] Handle null returned values and update mocks int ests
+
+---
+ .../__tests__/entity-service-events.test.js      |  1 +
+ .../__tests__/entity-service.test.js             |  2 ++
+ .../strapi/lib/services/entity-service/index.js  | 16 ++++++++++++----
+ 3 files changed, 15 insertions(+), 4 deletions(-)
+
+diff --git a/packages/core/strapi/lib/services/entity-service/__tests__/entity-service-events.test.js b/packages/core/strapi/lib/services/entity-service/__tests__/entity-service-events.test.js
+index dca0c8ffddc..2490579f934 100644
+--- a/packages/core/strapi/lib/services/entity-service/__tests__/entity-service-events.test.js
++++ b/packages/core/strapi/lib/services/entity-service/__tests__/entity-service-events.test.js
+@@ -28,6 +28,7 @@ describe('Entity service triggers webhooks', () => {
+         }),
+       },
+       db: {
++        transaction: (cb) => cb(),
+         query: () => ({
+           count: () => 0,
+           create: ({ data }) => data,
+diff --git a/packages/core/strapi/lib/services/entity-service/__tests__/entity-service.test.js b/packages/core/strapi/lib/services/entity-service/__tests__/entity-service.test.js
+index 3866b8780ab..98c6c820eda 100644
+--- a/packages/core/strapi/lib/services/entity-service/__tests__/entity-service.test.js
++++ b/packages/core/strapi/lib/services/entity-service/__tests__/entity-service.test.js
+@@ -53,6 +53,7 @@ describe('Entity service', () => {
+ 
+       const fakeDB = {
+         query: jest.fn(() => fakeQuery),
++        transaction: (cb) => cb(),
+       };
+ 
+       const fakeStrapi = {
+@@ -117,6 +118,7 @@ describe('Entity service', () => {
+ 
+         const fakeDB = {
+           query: jest.fn(() => fakeQuery),
++          transaction: (cb) => cb(),
+         };
+ 
+         const fakeStrapi = {
+diff --git a/packages/core/strapi/lib/services/entity-service/index.js b/packages/core/strapi/lib/services/entity-service/index.js
+index 86916763487..cd96a24744c 100644
+--- a/packages/core/strapi/lib/services/entity-service/index.js
++++ b/packages/core/strapi/lib/services/entity-service/index.js
+@@ -132,7 +132,7 @@ const createDefaultImplementation = ({ strapi, db, eventHub, entityValidator })
+     const entity = await db.transaction(async () => {
+       const componentData = await createComponents(uid, validData);
+ 
+-      let entity = await db.query(uid).create({
++      const entity = await db.query(uid).create({
+         ...query,
+         data: creationPipeline(Object.assign(omitComponentData(model, validData), componentData), {
+           contentType: model,
+@@ -143,7 +143,7 @@ const createDefaultImplementation = ({ strapi, db, eventHub, entityValidator })
+       // FIXME: upload in components
+       if (files && Object.keys(files).length > 0) {
+         await this.uploadFiles(uid, entity, files);
+-        entity = await this.findOne(uid, entity.id, wrappedParams);
++        return this.findOne(uid, entity.id, wrappedParams);
+       }
+ 
+       return entity;
+@@ -182,7 +182,7 @@ const createDefaultImplementation = ({ strapi, db, eventHub, entityValidator })
+ 
+       const componentData = await updateComponents(uid, entityToUpdate, validData);
+ 
+-      let entity = await db.query(uid).update({
++      const entity = await db.query(uid).update({
+         ...query,
+         where: { id: entityId },
+         data: updatePipeline(Object.assign(omitComponentData(model, validData), componentData), {
+@@ -194,12 +194,16 @@ const createDefaultImplementation = ({ strapi, db, eventHub, entityValidator })
+       // FIXME: upload in components
+       if (files && Object.keys(files).length > 0) {
+         await this.uploadFiles(uid, entity, files);
+-        entity = await this.findOne(uid, entity.id, wrappedParams);
++        return this.findOne(uid, entity.id, wrappedParams);
+       }
+ 
+       return entity;
+     });
+ 
++    if (!entity) {
++      return null;
++    }
++
+     await this.emitEvent(uid, ENTRY_UPDATE, entity);
+ 
+     return entity;
+@@ -229,6 +233,10 @@ const createDefaultImplementation = ({ strapi, db, eventHub, entityValidator })
+       return entityToDelete;
+     });
+ 
++    if (!entity) {
++      return null;
++    }
++
+     await this.emitEvent(uid, ENTRY_DELETE, entity);
+ 
+     return entity;
+
+From 7352dd2b365e74cefdf1936479186a2ba74a790d Mon Sep 17 00:00:00 2001
+From: Alexandre Bodin <bodin.alex@gmail.com>
+Date: Mon, 12 Sep 2022 20:47:16 +0200
+Subject: [PATCH 3/3] Fix transaction lock finding the currently editing entry
+
+---
+ .../lib/services/entity-service/index.js      | 32 +++++++++----------
+ 1 file changed, 16 insertions(+), 16 deletions(-)
+
+diff --git a/packages/core/strapi/lib/services/entity-service/index.js b/packages/core/strapi/lib/services/entity-service/index.js
+index cd96a24744c..b197520446b 100644
+--- a/packages/core/strapi/lib/services/entity-service/index.js
++++ b/packages/core/strapi/lib/services/entity-service/index.js
+@@ -129,7 +129,7 @@ const createDefaultImplementation = ({ strapi, db, eventHub, entityValidator })
+     // select / populate
+     const query = transformParamsToQuery(uid, pickSelectionParams(wrappedParams));
+ 
+-    const entity = await db.transaction(async () => {
++    let entity = await db.transaction(async () => {
+       const componentData = await createComponents(uid, validData);
+ 
+       const entity = await db.query(uid).create({
+@@ -139,16 +139,16 @@ const createDefaultImplementation = ({ strapi, db, eventHub, entityValidator })
+         }),
+       });
+ 
+-      // TODO: upload the files then set the links in the entity like with compo to avoid making too many queries
+-      // FIXME: upload in components
+-      if (files && Object.keys(files).length > 0) {
+-        await this.uploadFiles(uid, entity, files);
+-        return this.findOne(uid, entity.id, wrappedParams);
+-      }
+-
+       return entity;
+     });
+ 
++    // TODO: upload the files then set the links in the entity like with compo to avoid making too many queries
++    // FIXME: upload in components
++    if (files && Object.keys(files).length > 0) {
++      await this.uploadFiles(uid, entity, files);
++      entity = this.findOne(uid, entity.id, wrappedParams);
++    }
++
+     await this.emitEvent(uid, ENTRY_CREATE, entity);
+ 
+     return entity;
+@@ -160,7 +160,7 @@ const createDefaultImplementation = ({ strapi, db, eventHub, entityValidator })
+ 
+     const model = strapi.getModel(uid);
+ 
+-    const entity = await db.transaction(async () => {
++    let entity = await db.transaction(async () => {
+       const entityToUpdate = await db.query(uid).findOne({ where: { id: entityId } });
+ 
+       if (!entityToUpdate) {
+@@ -190,13 +190,6 @@ const createDefaultImplementation = ({ strapi, db, eventHub, entityValidator })
+         }),
+       });
+ 
+-      // TODO: upload the files then set the links in the entity like with compo to avoid making too many queries
+-      // FIXME: upload in components
+-      if (files && Object.keys(files).length > 0) {
+-        await this.uploadFiles(uid, entity, files);
+-        return this.findOne(uid, entity.id, wrappedParams);
+-      }
+-
+       return entity;
+     });
+ 
+@@ -204,6 +197,13 @@ const createDefaultImplementation = ({ strapi, db, eventHub, entityValidator })
+       return null;
+     }
+ 
++    // TODO: upload the files then set the links in the entity like with compo to avoid making too many queries
++    // FIXME: upload in components
++    if (files && Object.keys(files).length > 0) {
++      await this.uploadFiles(uid, entity, files);
++      entity = this.findOne(uid, entity.id, wrappedParams);
++    }
++
+     await this.emitEvent(uid, ENTRY_UPDATE, entity);
+ 
+     return entity;
